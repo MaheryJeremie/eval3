@@ -26,9 +26,8 @@ public class LoginController {
             @RequestParam String password,
             Model model) {
         try {
-            String message = loginService.login(username, password);
-            model.addAttribute("message", message);
-            return "redirect:/suppliers";
+            loginService.login(username, password);
+            return "redirect:/employees";
         } catch (Exception e) {
             model.addAttribute("error", "Username or password invalid");
             return "login/index";
