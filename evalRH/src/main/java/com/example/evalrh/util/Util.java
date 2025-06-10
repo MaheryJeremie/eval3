@@ -16,7 +16,7 @@ public class Util {
         try {
             formattedDate = initialFormat.parse(date.trim());
         } catch (ParseException e) {
-            throw new ParseException("Invalid date or invalid date format",e.getErrorOffset());
+            throw new ParseException("Date invalide",e.getErrorOffset());
         }
         return finalFormat.format(formattedDate);
     }

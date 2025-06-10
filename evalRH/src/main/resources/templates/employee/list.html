@@ -107,6 +107,7 @@
         .table-responsive {
             overflow-x: auto; /* Enable horizontal scrolling for small screens */
             -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+            max-height: 600px;overflow-y: auto
         }
 
         .data-table {
@@ -253,15 +254,15 @@
                     <label for="employeeName">Nom:</label>
                     <input type="text" name="employee_name" id="employeeName">
                 </div>
-                <div>
+                <!--<div>
                     <label for="department">Departement:</label>
                     <select name="department" id="department">
-                        <option value="" hidden>-- Choisir --</option>
+                        <option value="" hidden>&#45;&#45; Choisir &#45;&#45;</option>
                         <option th:each="department : ${departments}"
                                 th:value="${department.name}"
                                 th:text="${department.name}"></option>
                     </select>
-                </div>
+                </div>-->
                 <div>
                     <label for="gender">Genre:</label>
                     <select name="gender" id="gender">
@@ -292,7 +293,7 @@
                     <tr>
                         <th>ID</th>
                         <th>Nom</th>
-                        <th>Departement</th>
+                        <!--<th>Departement</th>-->
                         <th>Date de recrutement</th>
                         <th>Genre</th>
                         <th>Statut</th>
@@ -303,7 +304,7 @@
                     <tr th:each="employee : ${employees}">
                         <td th:text="${employee.name}"></td>
                         <td th:text="${employee.employee_name}"></td>
-                        <td th:text="${employee.department}"></td>
+                        <!--<td th:text="${employee.department}"></td>-->
                         <td th:text="${employee.date_of_joining}"></td>
                         <td th:text="${employee.gender}"></td>
                         <td th:text="${employee.status}"></td>

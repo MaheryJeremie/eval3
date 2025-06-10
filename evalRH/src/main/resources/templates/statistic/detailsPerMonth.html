@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{/base}">
+<head>
+    <title>Analyse Détaillée des Salaires - ERP System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <style>
+        /* Styles existants (inchangés) */
+        .page-header { margin-bottom: var(--space-4); padding-bottom: var(--space-2); border-bottom: 1px solid var(--neutral-200); }
+        .page-header h2 { font-size: var(--text-2xl); color: var(--neutral-800); font-weight: 600; margin-bottom: var(--space-3); }
+        .search-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); align-items: flex-end; padding-top: var(--space-2); }
+        .form-field-group { display: flex; flex-direction: column; min-width: 0; }
+        .search-form label { font-weight: 500; color: var(--neutral-700); font-size: var(--text-sm); display: block; margin-bottom: var(--space-1); }
+        .search-form input[type="number"] { width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--neutral-300); border-radius: var(--radius-md); font-size: var(--text-base); color: var(--neutral-700); transition: border-color 0.2s ease, box-shadow 0.2s ease; background-color: white; height: 42px; box-sizing: border-box; }
+        .search-form input[type="number"]:focus { outline: none; border-color: var(--primary-500); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
+        .search-btn { background-color: var(--primary-600); color: white; border: none; padding: 0 var(--space-4); border-radius: var(--radius-md); cursor: WHITESPACEer; font-size: var(--text-base); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); transition: background-color 0.2s ease, box-shadow 0.2s ease; height: 42px; white-space: nowrap; }
+        .search-btn:hover { background-color: var(--primary-700); box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3); }
+        .search-btn svg, .search-btn i { width: 20px; height: 20px; }
+        .card { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); margin-bottom: var(--space-4); border: 1px solid var(--neutral-200); background-color: white; border-radius: var(--radius-lg); }
+        .card-content-padding { padding: var(--space-4); }
+        .data-visualization-area { display: flex; flex-direction: row; gap: var(--space-3); align-items: flex-start; }
+        .table-wrapper { flex: 2.8; min-width: 0; }
+        .chart-wrapper { flex: 2.2; min-width: 0; position: sticky; top: var(--space-4); height: 600px;}
+        .chart-title { text-align: center; margin-bottom: var(--space-3); font-size: var(--text-lg); color: var(--neutral-700); font-weight: 600; }
+        #salaryEvolutionChart { max-height: 500px; }
+        .info-message { background-color: var(--primary-50); color: var(--primary-700); padding: var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--primary-200); text-align: center; font-weight: 500; margin-top: var(--space-4); }
+        .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; max-height: 600px;overflow-y: auto}
+        .data-table { width: 100%; border-collapse: collapse; /* Changed for details row */ font-size: var(--text-sm); text-align: left; }
+        .data-table thead { background-color: var(--primary-100); position: sticky; top: 0; z-index: 10; }
+        .data-table th { padding: var(--space-3); font-weight: 600; color: var(--primary-700); border-bottom: 1px solid var(--primary-200); white-space: nowrap; }
+        .data-table td { padding: var(--space-3); color: var(--neutral-700); white-space: nowrap; border-bottom: 1px solid var(--neutral-200); }
+
+        /* --- NOUVEAUX STYLES & AJUSTEMENTS --- */
+        .summary-row {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .summary-row:hover {
+            background-color: var(--neutral-50);
+        }
+        .summary-row.is-open {
+            background-color: var(--primary-50);
+            border-bottom: 1px solid var(--primary-200);
+        }
+        .details-row {
+            display: none; /* Caché par défaut */
+        }
+        .details-row td {
+            padding: 0;
+            border-bottom: 1px solid var(--primary-200);
+        }
+        .details-content {
+            display: flex;
+            gap: var(--space-4);
+            padding: var(--space-3) var(--space-4);
+            background-color: var(--neutral-25, #fafbfc);
+        }
+        .details-column {
+            flex: 1;
+        }
+        .details-column h4 {
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--neutral-800);
+            margin-top: 0;
+            margin-bottom: var(--space-2);
+            border-bottom: 1px solid var(--neutral-200);
+            padding-bottom: var(--space-1);
+        }
+        .details-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: var(--text-xs);
+        }
+        .details-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: var(--space-1) 0;
+        }
+        .details-list .component-name {
+            color: var(--neutral-600);
+        }
+        .details-list .component-value {
+            font-weight: 500;
+            color: var(--neutral-800);
+        }
+        .total-net-cell a { color: var(--primary-700); font-weight: 600; text-decoration: none; }
+        .total-net-cell a:hover { text-decoration: underline; }
+        .toggle-icon {
+            transition: transform 0.2s ease-in-out;
+            width: 16px;
+            height: 16px;
+            margin-right: var(--space-2);
+        }
+        .summary-row.is-open .toggle-icon {
+            transform: rotate(90deg);
+        }
+
+        @media (max-width: 1024px) {
+            .data-visualization-area { flex-direction: column; }
+            .chart-wrapper { width: 100%; margin-top: var(--space-4); position: static; }
+        }
+        @media (max-width: 768px) {
+            .details-content { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="content-container">
+        <div class="page-header">
+            <h2>Analyse Détaillée des Salaires par Année</h2>
+            <form th:action="@{/statistic/detailsPerMonth}" method="get" class="search-form">
+                <div class="form-field-group">
+                    <label for="year">Année :</label>
+                    <input type="number" name="year" id="year" th:value="${year}" placeholder="YYYY" required>
+                </div>
+                <button type="submit" class="search-btn">
+                    <i data-lucide="search"></i>Rechercher
+                </button>
+            </form>
+        </div>
+
+        <div th:if="${salaries != null and not #lists.isEmpty(salaries)}">
+            <div class="data-visualization-area">
+                <div class="table-wrapper">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                <tr>
+                                    <th>Mois</th>
+                                    <th>Total Gains</th>
+                                    <th>Total Retenues</th>
+                                    <th>Salaire Net</th>
+                                </tr>
+                                </thead>
+                                <tbody id="salary-table-body">
+                                <th:block th:each="salary, iterStat : ${salaries}">
+                                    <tr class="summary-row" th:attr="data-details-id='details-' + ${iterStat.index}">
+                                        <td>
+                                            <div style="display: flex; align-items: center;">
+                                                <i data-lucide="chevron-right" class="toggle-icon"></i>
+                                                <span th:text="${salary.month_name}"></span>
+                                            </div>
+                                        </td>
+                                        <td th:text="${#numbers.formatDecimal(salary.total_gross_pay, 1, 'WHITESPACE', 2, 'COMMA')} + ' ' + ${salary.currency}"></td>
+                                        <td th:text="${#numbers.formatDecimal(salary.total_deductions, 1, 'WHITESPACE', 2, 'COMMA')} + ' ' + ${salary.currency}"></td>
+                                        <td class="total-net-cell">
+                                            <a th:href="@{/salarySlip/search(month=${salary.year}+'-'+${salary.month_number})}"
+                                               th:text="${#numbers.formatDecimal(salary.total_net_pay, 1, 'WHITESPACE', 2, 'COMMA')} + ' ' + ${salary.currency}"></a>
+                                        </td>
+                                    </tr>
+                                    <tr class="details-row" th:id="'details-' + ${iterStat.index}">
+                                        <td colspan="4">
+                                            <div class="details-content">
+                                                <div class="details-column">
+                                                    <h4>Détail des Gains</h4>
+                                                    <ul class="details-list" th:if="${not #maps.isEmpty(salary.earnings_detail)}">
+                                                        <li th:each="earning : ${salary.earnings_detail}">
+                                                            <span class="component-name" th:text="${earning.key}"></span>
+                                                            <span class="component-value" th:text="${#numbers.formatDecimal(earning.value, 1, 'WHITESPACE', 2, 'COMMA')}"></span>
+                                                        </li>
+                                                    </ul>
+                                                    <p th:if="${#maps.isEmpty(salary.earnings_detail)}">Aucun gain ce mois-ci.</p>
+                                                </div>
+                                                <div class="details-column">
+                                                    <h4>Détail des Retenues</h4>
+                                                    <ul class="details-list" th:if="${not #maps.isEmpty(salary.deductions_detail)}">
+                                                        <li th:each="deduction : ${salary.deductions_detail}">
+                                                            <span class="component-name" th:text="${deduction.key}"></span>
+                                                            <span class="component-value numeric-cell" th:text="${#numbers.formatDecimal(deduction.value, 1, 'WHITESPACE', 2, 'COMMA')}"></span>
+                                                        </li>
+                                                    </ul>
+                                                    <p th:if="${#maps.isEmpty(salary.deductions_detail)}">Aucune retenue ce mois-ci.</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </th:block>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-wrapper">
+                    <div class="card">
+                        <div class="card-content-padding">
+                            <h3 class="chart-title">Évolution des Composantes de Salaire (<span th:text="${year}"></span>)</h3>
+                            <canvas id="salaryEvolutionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div th:if="${salaries == null or #lists.isEmpty(salaries)}" class="info-message">
+            <p th:if="${year == null}">Veuillez choisir une année pour afficher l'analyse.</p>
+            <p th:if="${year != null and (salaries == null or #lists.isEmpty(salaries))}">Aucune donnée de salaire trouvée pour l'année <span th:text="${year}"></span>.</p>
+        </div>
+    </div>
+    <script th:inline="javascript">
+        document.addEventListener('DOMContentLoaded', function() {
+            lucide.createIcons();
+
+            // Interactivité pour le tableau dépliant
+            const salaryTableBody = document.getElementById('salary-table-body');
+            if (salaryTableBody) {
+                salaryTableBody.addEventListener('click', function(event) {
+                    const summaryRow = event.target.closest('.summary-row');
+                    if (!summaryRow) return;
+
+                    const detailsId = summaryRow.getAttribute('data-details-id');
+                    const detailsRow = document.getElementById(detailsId);
+
+                    if (detailsRow) {
+                        summaryRow.classList.toggle('is-open');
+                        detailsRow.style.display = summaryRow.classList.contains('is-open') ? 'table-row' : 'none';
+                    }
+                });
+            }
+
+            /*<![CDATA[*/
+            const salariesData = /*[[${salaries}]]*/ null;
+            /*]]>*/
+
+            if (salariesData && salariesData.length > 0) {
+                const currencySymbol = salariesData[0].currency || '';
+                const labels = salariesData.map(s => s.month_name);
+
+                // 1. Dataset pour le Salaire Net (toujours visible)
+                const netPayData = salariesData.map(s => s.total_net_pay);
+                let chartDatasets = [{
+                    label: 'Salaire Net',
+                    data: netPayData,
+                    borderColor: 'rgb(0, 122, 255)', // Un bleu plus vif pour le principal
+                    backgroundColor: 'rgba(0, 122, 255, 0.5)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.1,
+                    hidden: false
+                }];
+
+                // 2. Collecter toutes les composantes uniques (gains et retenues)
+                const allComponents = new Set();
+                salariesData.forEach(salary => {
+                    Object.keys(salary.earnings_detail).forEach(key => allComponents.add(key));
+                    Object.keys(salary.deductions_detail).forEach(key => allComponents.add(key));
+                });
+
+                // --- NOUVELLE PALETTE DE COULEURS VIVES ---
+                const colorPalette = [
+                    'rgb(255, 69, 58)',   // Rouge Vif
+                    'rgb(48, 209, 88)',   // Vert Vif
+                    'rgb(255, 159, 10)',  // Orange Vif
+                    'rgb(90, 200, 250)',  // Cyan / Bleu Ciel
+                    'rgb(191, 90, 242)',  // Violet / Mauve
+                    'rgb(255, 55, 95)',   // Rose / Magenta
+                    'rgb(10, 200, 150)',  // Turquoise
+                    'rgb(255, 214, 10)'   // Jaune Vif
+                ];
+
+                // 3. Créer un dataset pour chaque composante (caché par défaut)
+                let colorIndex = 0;
+                allComponents.forEach(componentName => {
+                    const componentData = salariesData.map(salary => {
+                        return (salary.earnings_detail[componentName] || salary.deductions_detail[componentName] || 0);
+                    });
+
+                    const isDeduction = salariesData.some(s => s.deductions_detail[componentName]);
+
+                    chartDatasets.push({
+                        label: componentName,
+                        data: componentData,
+                        borderColor: colorPalette[colorIndex % colorPalette.length],
+                        fill: false,
+                        tension: 0.2,
+                        borderDash: isDeduction ? [5, 5] : [], // Style différent pour les retenues
+                        hidden: true // Caché par défaut
+                    });
+                    colorIndex++;
+                });
+
+
+                // --- Initialisation du graphique ---
+                const ctx = document.getElementById('salaryEvolutionChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: chartDatasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    useWHITESPACEStyle: false,
+                                    boxWidth: 20
+                                }
+                            },
+                            title: { display: false },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) { label += ': '; }
+                                        if (context.parsed.y !== null) {
+                                            label += new Intl.NumberFormat('fr-FR', {
+                                                style: 'currency', currency: currencySymbol,
+                                                minimumFractionDigits: 2, maximumFractionDigits: 2
+                                            }).format(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return new Intl.NumberFormat('fr-FR', { notation: 'compact', compactDisplay: 'short' }).format(value);
+                                    }
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                    }
+                });
+            }
+        });
+    </script>
+</div>
+</body>
+</html>

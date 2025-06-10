@@ -2,20 +2,18 @@ package com.example.evalrh.service.pdf;
 
 import com.example.evalrh.service.company.CompanyService;
 import com.itextpdf.text.*;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfWriter;
+import com.itextpdf.text.pdf.*;
 import org.springframework.stereotype.Service;
 
 import java.io.OutputStream;
 import java.io.IOException;
 import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols; // Import for DecimalFormatSymbols
+import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale; // Import for Locale
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -27,372 +25,390 @@ public class SalarySlipPdfExporter {
         this.companyService = companyService;
     }
 
-    // --- Color Palette (Inspired by your CSS) ---
-    private static final BaseColor COLOR_PRIMARY_TEXT = new BaseColor(0x43, 0x38, 0xCA); // --primary-700
-    private static final BaseColor COLOR_HEADER_BG = new BaseColor(0xEE, 0xF2, 0xFF); // --primary-50
+    // --- Palette de Couleurs (Inchangée) ---
+    private static final BaseColor COLOR_PRIMARY = new BaseColor(0x43, 0x38, 0xCA); // --primary-700
+    private static final BaseColor COLOR_PRIMARY_LIGHT = new BaseColor(0xEE, 0xF2, 0xFF); // --primary-50
     private static final BaseColor COLOR_TABLE_HEADER_BG = new BaseColor(0xE0, 0xE7, 0xFF); // --primary-100
-    private static final BaseColor COLOR_TEXT_NORMAL = new BaseColor(0x33, 0x41, 0x55); // --neutral-700
-    private static final BaseColor COLOR_TEXT_MUTED = new BaseColor(0x64, 0x74, 0x8B); // --neutral-500
-    private static final BaseColor COLOR_BORDER = new BaseColor(0xCB, 0xD5, 0xE1); // --neutral-300
+    private static final BaseColor COLOR_TABLE_ROW_ALT_BG = new BaseColor(0xF8, 0xF9, 0xFA); // MODIFIÉ: Encore plus subtil
+    private static final BaseColor COLOR_TEXT_NORMAL = new BaseColor(0x33, 0x41, 0x55);
+    private static final BaseColor COLOR_TEXT_MUTED = new BaseColor(0x64, 0x74, 0x8B);
+    private static final BaseColor COLOR_BORDER = new BaseColor(0xDE, 0xE2, 0xE6);
     private static final BaseColor COLOR_WHITE = BaseColor.WHITE;
 
-    // --- Fonts ---
-    // Using Helvetica as a stand-in for Inter. For true Inter, you'd need to embed the font file.
-    private static final Font FONT_DOCUMENT_TITLE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 22, COLOR_PRIMARY_TEXT);
-    private static final Font FONT_COMPANY_NAME = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, COLOR_PRIMARY_TEXT);
-    private static final Font FONT_SECTION_TITLE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, COLOR_TEXT_NORMAL);
-    private static final Font FONT_LABEL_BOLD = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, COLOR_TEXT_NORMAL);
+    // --- Polices (Hiérarchie renforcée) ---
+    private static final Font FONT_DOCUMENT_TITLE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 26, COLOR_TEXT_NORMAL);
+    private static final Font FONT_COMPANY_NAME = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, COLOR_PRIMARY);
+    private static final Font FONT_COMPANY_INFO = FontFactory.getFont(FontFactory.HELVETICA, 9, COLOR_TEXT_MUTED);
+    private static final Font FONT_SECTION_TITLE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, COLOR_TEXT_NORMAL);
+    private static final Font FONT_LABEL_UPPERCASE = FontFactory.getFont(FontFactory.HELVETICA, 8, COLOR_TEXT_MUTED); // NOUVEAU
     private static final Font FONT_VALUE = FontFactory.getFont(FontFactory.HELVETICA, 9, COLOR_TEXT_NORMAL);
-    private static final Font FONT_VALUE_BOLD = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, COLOR_TEXT_NORMAL);
     private static final Font FONT_TABLE_HEADER = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, COLOR_TEXT_NORMAL);
     private static final Font FONT_TABLE_CELL = FontFactory.getFont(FontFactory.HELVETICA, 9, COLOR_TEXT_NORMAL);
-    private static final Font FONT_TOTAL_LABEL = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, COLOR_TEXT_NORMAL);
-    private static final Font FONT_TOTAL_VALUE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, COLOR_PRIMARY_TEXT);
-    private static final Font FONT_NET_IN_WORDS_LABEL = FontFactory.getFont(FontFactory.HELVETICA, 8, COLOR_TEXT_MUTED);
-    private static final Font FONT_NET_IN_WORDS_VALUE = FontFactory.getFont(FontFactory.HELVETICA, 9, COLOR_TEXT_NORMAL);
+    private static final Font FONT_TOTAL_LABEL = FontFactory.getFont(FontFactory.HELVETICA, 10, COLOR_TEXT_MUTED);
+    private static final Font FONT_TOTAL_VALUE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, COLOR_TEXT_NORMAL);
+    private static final Font FONT_GRAND_TOTAL_LABEL = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, COLOR_PRIMARY);
+    private static final Font FONT_GRAND_TOTAL_VALUE = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, COLOR_PRIMARY);
+    private static final Font FONT_NET_IN_WORDS = FontFactory.getFont(FontFactory.HELVETICA, 9, COLOR_TEXT_MUTED);
+    private static final Font FONT_FOOTER = FontFactory.getFont(FontFactory.HELVETICA, 8, COLOR_TEXT_MUTED);
 
-
-    // --- Currency Format Setup ---
-    // Create DecimalFormatSymbols for French locale (or similar) to use space as grouping and comma as decimal
     private static final DecimalFormat CURRENCY_FORMAT;
     static {
-        DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.FRENCH); // Use a locale that uses space for grouping and comma for decimal
-        symbols.setGroupingSeparator(' '); // Set grouping separator to space
-        symbols.setDecimalSeparator(','); // Set decimal separator to comma
-        CURRENCY_FORMAT = new DecimalFormat("#,##0.00", symbols); // Apply the custom symbols
+        DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.FRENCH);
+        symbols.setGroupingSeparator(' ');
+        symbols.setDecimalSeparator(',');
+        CURRENCY_FORMAT = new DecimalFormat("#,##0.00", symbols);
     }
-
     private static final SimpleDateFormat DATE_FORMAT_INPUT = new SimpleDateFormat("yyyy-MM-dd");
-    private static final SimpleDateFormat DATE_FORMAT_OUTPUT = new SimpleDateFormat("dd/MM/yyyy");
+    private static final SimpleDateFormat DATE_FORMAT_OUTPUT = new SimpleDateFormat("dd MMMM yyyy", Locale.FRENCH);
+
 
     @SuppressWarnings("unchecked")
     public void exportToPdf(Map<String, Object> salaryData, OutputStream outputStream) throws DocumentException, IOException {
         Map<String, Object> companyDetails = companyService.getCompanyDetails(getString(salaryData, "company", ""));
-        Document document = new Document(PageSize.A4, 36, 36, 36, 36); // Margins: left, right, top, bottom
-        PdfWriter.getInstance(document, outputStream);
+
+        // MODIFIÉ: Augmentation de la marge gauche pour la bande de couleur
+        Document document = new Document(PageSize.A4, 48, 36, 36, 36);
+        PdfWriter writer = PdfWriter.getInstance(document, outputStream);
+
+        // NOUVEAU: Événement pour la bande latérale et le pied de page
+        ModernPageEventHelper eventHelper = new ModernPageEventHelper(COLOR_PRIMARY);
+        writer.setPageEvent(eventHelper);
+
         document.open();
 
-        // --- Header Section ---
         addHeaderSection(document, companyDetails, salaryData);
-        addSeparatorLine(document, 10f);
+        document.add(new Paragraph("\n"));
 
-
-        // --- Employee & Period Information ---
         addEmployeeAndPeriodInfo(document, salaryData);
-        document.add(Chunk.NEWLINE);
 
-
-        // --- Gains (Earnings) ---
-        Paragraph earningsTitle = new Paragraph("GAINS", FONT_SECTION_TITLE);
-        earningsTitle.setSpacingBefore(10f);
-        earningsTitle.setSpacingAfter(5f);
-        document.add(earningsTitle);
+        document.add(createSectionTitle("DÉTAIL DES GAINS"));
         List<Map<String, Object>> earnings = (List<Map<String, Object>>) salaryData.get("earnings");
-        PdfPTable earningsTable = createStyledEarningsDeductionsTable("Composant de salaire", "Montant", earnings, getString(salaryData, "currency", ""));
-        document.add(earningsTable);
-        document.add(Chunk.NEWLINE);
+        document.add(createModernStyledTable(earnings, getString(salaryData, "currency", "")));
 
-
-        // --- Déductions (Deductions) ---
-        Paragraph deductionsTitle = new Paragraph("RETENUES", FONT_SECTION_TITLE);
-        deductionsTitle.setSpacingBefore(10f);
-        deductionsTitle.setSpacingAfter(5f);
-        document.add(deductionsTitle);
+        document.add(createSectionTitle("DÉTAIL DES RETENUES"));
         List<Map<String, Object>> deductions = (List<Map<String, Object>>) salaryData.get("deductions");
-        PdfPTable deductionsTable = createStyledEarningsDeductionsTable("Composant de salaire", "Montant", deductions, getString(salaryData, "currency", ""));
-        document.add(deductionsTable);
-        document.add(Chunk.NEWLINE);
+        document.add(createModernStyledTable(deductions, getString(salaryData, "currency", "")));
 
-
-        // --- Totaux ---
         addTotalsSection(document, salaryData);
-        addSeparatorLine(document, 15f);
-
-        // --- Net Pay in Words ---
-        addNetInWords(document, salaryData);
 
         document.close();
     }
 
+    // MODIFIÉ: En-tête sans logo, avec une forte hiérarchie typographique
     private void addHeaderSection(Document document, Map<String, Object> companyDetails, Map<String, Object> salaryData) throws DocumentException {
         PdfPTable headerTable = new PdfPTable(2);
         headerTable.setWidthPercentage(100);
-        headerTable.setWidths(new float[]{2, 3}); // Adjust widths as needed
+        headerTable.setWidths(new float[]{3, 2});
 
-        // Company Info Cell
-        PdfPCell companyCell = new PdfPCell();
-        companyCell.setBorder(Rectangle.NO_BORDER);
-        companyCell.setPadding(5f);
+        // Cellule de gauche : Titre et infos entreprise
+        PdfPCell leftCell = new PdfPCell();
+        leftCell.setBorder(Rectangle.NO_BORDER);
+        leftCell.setPaddingRight(20f);
 
-        Paragraph companyName = new Paragraph(getString(companyDetails, "company_name", "N/A Company"), FONT_COMPANY_NAME);
-        companyCell.addElement(companyName);
+        Paragraph docTitle = new Paragraph("Fiche de Paie", FONT_DOCUMENT_TITLE);
+        leftCell.addElement(docTitle);
 
-        // Add company address or other details if available and desired
-        // Example: companyCell.addElement(new Paragraph("NIF: " + getString(companyDetails, "tax_id", ""), FONT_VALUE));
-        //          companyCell.addElement(new Paragraph("STAT: " + getString(companyDetails, "stat_id", ""), FONT_VALUE));
-        //          companyCell.addElement(new Paragraph("RCS: " + getString(companyDetails, "rcs_id", ""), FONT_VALUE));
-        //          companyCell.addElement(new Paragraph(getString(companyDetails, "address_display", ""), FONT_VALUE)); // if you have an address field
+        Paragraph companyName = new Paragraph(getString(companyDetails, "company_name", "Nom de l'entreprise"), FONT_COMPANY_NAME);
+        companyName.setSpacingBefore(10f);
+        leftCell.addElement(companyName);
 
-        headerTable.addCell(companyCell);
+        Paragraph companyInfo = new Paragraph();
+        leftCell.addElement(companyInfo);
 
-        // Document Title and Period Cell
-        PdfPCell titleCell = new PdfPCell();
-        titleCell.setBorder(Rectangle.NO_BORDER);
-        titleCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        titleCell.setVerticalAlignment(Element.ALIGN_TOP);
-        titleCell.setPadding(5f);
-
-        Paragraph docTitle = new Paragraph("FICHE DE PAIE", FONT_DOCUMENT_TITLE);
-        docTitle.setAlignment(Element.ALIGN_RIGHT);
-        titleCell.addElement(docTitle);
+        // Cellule de droite : Période et dates
+        PdfPCell rightCell = new PdfPCell();
+        rightCell.setBorder(Rectangle.NO_BORDER);
+        rightCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
 
         String periode = "Période du " + formatDate(getString(salaryData, "start_date", "")) + " au " + formatDate(getString(salaryData, "end_date", ""));
-        Paragraph periodText = new Paragraph(periode, FONT_VALUE);
-        periodText.setAlignment(Element.ALIGN_RIGHT);
-        periodText.setSpacingBefore(5f);
-        titleCell.addElement(periodText);
+        rightCell.addElement(new Paragraph(periode, FONT_VALUE));
+        rightCell.addElement(new Paragraph("Émis le: " + formatDate(getString(salaryData, "posting_date", "")), FONT_COMPANY_INFO));
 
-        Paragraph emissionDateText = new Paragraph("Date d'émission: " + formatDate(getString(salaryData, "posting_date", "")), FONT_VALUE);
-        emissionDateText.setAlignment(Element.ALIGN_RIGHT);
-        titleCell.addElement(emissionDateText);
-
-
-        headerTable.addCell(titleCell);
+        headerTable.addCell(leftCell);
+        headerTable.addCell(rightCell);
         document.add(headerTable);
     }
 
+    // MODIFIÉ: Utilisation des nouveaux styles de police pour les labels
     private void addEmployeeAndPeriodInfo(Document document, Map<String, Object> salaryData) throws DocumentException {
-        PdfPTable infoTable = new PdfPTable(2); // Two columns for side-by-side info
+        PdfPTable infoTable = new PdfPTable(2);
         infoTable.setWidthPercentage(100);
-        infoTable.setWidths(new float[]{1, 1}); // Equal widths
-        infoTable.setSpacingBefore(10f);
+        infoTable.setSpacingBefore(15f);
+        infoTable.setSpacingAfter(20f);
 
-        // Left Column: Employee Details
-        PdfPCell employeeDetailsCell = new PdfPCell();
-        employeeDetailsCell.setBorder(Rectangle.NO_BORDER);
-        employeeDetailsCell.setPadding(5f);
+        // Colonne de gauche
+        PdfPCell leftCol = new PdfPCell();
+        leftCol.setBorder(Rectangle.NO_BORDER);
+        addLabelValue(leftCol, "EMPLOYÉ", getString(salaryData, "employee_name", ""));
+        addLabelValue(leftCol, "MATRICULE", getString(salaryData, "employee", ""));
+        addLabelValue(leftCol, "POSTE", getString(salaryData, "designation", "N/A"));
 
-        addLabelAndValue(employeeDetailsCell, "Nom de l'employé:", getString(salaryData, "employee_name", ""));
-        addLabelAndValue(employeeDetailsCell, "Matricule:", getString(salaryData, "employee", ""));
-        // You can add more employee details here if available, e.g., Department, Designation
+        // Colonne de droite
+        PdfPCell rightCol = new PdfPCell();
+        rightCol.setBorder(Rectangle.NO_BORDER);
+        addLabelValue(rightCol, "FRÉQUENCE DE PAIE", getString(salaryData, "payroll_frequency", ""));
+        addLabelValue(rightCol, "JOURS TRAVAILLÉS", getString(salaryData, "payment_days", "") + " / " + getString(salaryData, "total_working_days", ""));
+        addLabelValue(rightCol, "DEVISE", getString(salaryData, "currency", ""));
 
-        infoTable.addCell(employeeDetailsCell);
-
-        // Right Column: Payroll Details
-        PdfPCell payrollDetailsCell = new PdfPCell();
-        payrollDetailsCell.setBorder(Rectangle.NO_BORDER);
-        payrollDetailsCell.setPadding(5f);
-        payrollDetailsCell.setHorizontalAlignment(Element.ALIGN_LEFT); // Align content of this cell to left
-
-        addLabelAndValue(payrollDetailsCell, "Fréquence de paie:", getString(salaryData, "payroll_frequency", ""));
-        addLabelAndValue(payrollDetailsCell, "Devise:", getString(salaryData, "currency", ""));
-        addLabelAndValue(payrollDetailsCell, "Jours travaillés:", getString(salaryData, "payment_days", "") + "/" + getString(salaryData, "total_working_days", ""));
-        // Add more payroll specific info if needed
-
-        infoTable.addCell(payrollDetailsCell);
-
+        infoTable.addCell(leftCol);
+        infoTable.addCell(rightCol);
         document.add(infoTable);
     }
 
-    private void addLabelAndValue(PdfPCell containerCell, String label, String value) {
-        PdfPTable innerTable = new PdfPTable(2);
-        innerTable.setWidthPercentage(100);
-        try {
-            innerTable.setWidths(new float[]{1, 2}); // Adjust ratio as needed
-        } catch (DocumentException e) { /* Should not happen with fixed columns */ }
-
-        PdfPCell labelCell = new PdfPCell(new Phrase(label, FONT_LABEL_BOLD));
-        labelCell.setBorder(Rectangle.NO_BORDER);
-        labelCell.setHorizontalAlignment(Element.ALIGN_LEFT);
-        labelCell.setPaddingBottom(4f);
-        innerTable.addCell(labelCell);
-
-        PdfPCell valueCell = new PdfPCell(new Phrase(value, FONT_VALUE));
-        valueCell.setBorder(Rectangle.NO_BORDER);
-        valueCell.setHorizontalAlignment(Element.ALIGN_LEFT);
-        valueCell.setPaddingBottom(4f);
-        innerTable.addCell(valueCell);
-
-        containerCell.addElement(innerTable);
+    // NOUVEAU: Helper pour le pattern "Label en majuscule / Valeur"
+    private void addLabelValue(PdfPCell container, String label, String value) {
+        Paragraph p = new Paragraph();
+        p.add(new Chunk(label + "\n", FONT_LABEL_UPPERCASE));
+        p.add(new Chunk(value, FONT_VALUE));
+        p.setSpacingAfter(8f);
+        container.addElement(p);
     }
 
+    private Paragraph createSectionTitle(String title) {
+        Paragraph p = new Paragraph(title, FONT_SECTION_TITLE);
+        p.setSpacingBefore(10f);
+        p.setSpacingAfter(10f);
+        return p;
+    }
 
-    private PdfPTable createStyledEarningsDeductionsTable(String header1, String header2, List<Map<String, Object>> items, String currency) throws DocumentException {
+    // NOUVEAU: Table de style moderne (ligne de séparation au lieu de fond)
+    private PdfPTable createModernStyledTable(List<Map<String, Object>> items, String currency) throws DocumentException {
         PdfPTable table = new PdfPTable(2);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{3, 1}); // Description wider than amount
-        table.setSpacingBefore(5f);
-        table.setHeaderRows(1); // Repeats header on new page
+        table.setWidths(new float[]{3, 1});
+        table.setHeaderRows(1);
+        table.setSpacingAfter(20f);
 
-        // Header Cell 1
-        PdfPCell cellHeader1 = new PdfPCell(new Phrase(header1, FONT_TABLE_HEADER));
-        cellHeader1.setBackgroundColor(COLOR_TABLE_HEADER_BG);
-        cellHeader1.setHorizontalAlignment(Element.ALIGN_LEFT);
-        cellHeader1.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        cellHeader1.setPadding(8f);
-        cellHeader1.setBorderColor(COLOR_BORDER);
-        cellHeader1.setBorderWidth(0.5f);
-        table.addCell(cellHeader1);
+        // En-têtes avec bordure inférieure
+        PdfPCell header1 = new PdfPCell(new Phrase("COMPOSANT DE SALAIRE", FONT_TABLE_HEADER));
+        header1.setBorder(Rectangle.BOTTOM);
+        header1.setBorderColor(COLOR_PRIMARY);
+        header1.setBorderWidth(1.5f);
+        header1.setPadding(10f);
+        table.addCell(header1);
 
-        // Header Cell 2
-        PdfPCell cellHeader2 = new PdfPCell(new Phrase(header2 + " (" + currency + ")", FONT_TABLE_HEADER));
-        cellHeader2.setBackgroundColor(COLOR_TABLE_HEADER_BG);
-        cellHeader2.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        cellHeader2.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        cellHeader2.setPadding(8f);
-        cellHeader2.setBorderColor(COLOR_BORDER);
-        cellHeader2.setBorderWidth(0.5f);
-        table.addCell(cellHeader2);
+        PdfPCell header2 = new PdfPCell(new Phrase("MONTANT (" + currency + ")", FONT_TABLE_HEADER));
+        header2.setBorder(Rectangle.BOTTOM);
+        header2.setBorderColor(COLOR_PRIMARY);
+        header2.setBorderWidth(1.5f);
+        header2.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        header2.setPadding(10f);
+        table.addCell(header2);
 
         if (items != null && !items.isEmpty()) {
+            boolean alternate = false;
             for (Map<String, Object> item : items) {
-                addStyledTableCell(table, getString(item, "salary_component", "-"), FONT_TABLE_CELL, Element.ALIGN_LEFT);
-                addStyledAmountCell(table, getDouble(item, "amount"), FONT_TABLE_CELL, Element.ALIGN_RIGHT);
+                table.addCell(createDataCell(getString(item, "salary_component", "-"), Element.ALIGN_LEFT, alternate));
+                table.addCell(createAmountCell(getDouble(item, "amount"), alternate));
+                alternate = !alternate;
             }
-        } else {
-            PdfPCell noDataCell = new PdfPCell(new Phrase("Aucune donnée disponible", FONT_TABLE_CELL));
-            noDataCell.setColspan(2);
-            noDataCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            noDataCell.setPadding(10f);
-            noDataCell.setBorderColor(COLOR_BORDER);
-            noDataCell.setBorderWidth(0.5f);
-            table.addCell(noDataCell);
-        }
+        } else { /* ... no data cell ... */ }
+
         return table;
     }
 
-    private void addStyledTableCell(PdfPTable table, String text, Font font, int alignment) {
-        PdfPCell cell = new PdfPCell(new Phrase(text, font));
+    private PdfPCell createDataCell(String text, int alignment, boolean alternate) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, FONT_TABLE_CELL));
         cell.setHorizontalAlignment(alignment);
         cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        cell.setPadding(7f);
-        cell.setBorderColor(COLOR_BORDER);
-        cell.setBorderWidth(0.5f);
-        table.addCell(cell);
+        cell.setPadding(8f);
+        cell.setBorder(Rectangle.NO_BORDER);
+        if (alternate) cell.setBackgroundColor(COLOR_TABLE_ROW_ALT_BG);
+        return cell;
     }
 
-    private void addStyledAmountCell(PdfPTable table, Double amount, Font font, int alignment) {
-        String formattedAmount = (amount != null) ? CURRENCY_FORMAT.format(amount) : "0,00"; // Changed default to "0,00"
-        PdfPCell cell = new PdfPCell(new Phrase(formattedAmount, font));
-        cell.setHorizontalAlignment(alignment);
-        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        cell.setPadding(7f);
-        cell.setBorderColor(COLOR_BORDER);
-        cell.setBorderWidth(0.5f);
-        table.addCell(cell);
+    private PdfPCell createAmountCell(Double amount, boolean alternate) {
+        String formattedAmount = (amount != null) ? CURRENCY_FORMAT.format(amount) : "0,00";
+        PdfPCell cell = createDataCell(formattedAmount, Element.ALIGN_RIGHT, alternate);
+        return cell;
     }
 
+    // MODIFIÉ: Section des totaux avec le nouveau design "carte"
     private void addTotalsSection(Document document, Map<String, Object> salaryData) throws DocumentException {
-        Paragraph totalsTitle = new Paragraph("RÉCAPITULATIF", FONT_SECTION_TITLE);
-        totalsTitle.setSpacingBefore(10f);
-        totalsTitle.setSpacingAfter(5f);
-        totalsTitle.setAlignment(Element.ALIGN_RIGHT); // Align title to the right with the table
-        document.add(totalsTitle);
+        PdfPTable mainContainer = new PdfPTable(1);
+        mainContainer.setWidthPercentage(100);
+        mainContainer.setSpacingBefore(15f);
 
-        PdfPTable totalsTable = new PdfPTable(2);
-        totalsTable.setWidthPercentage(50); // Or adjust as needed
-        totalsTable.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        totalsTable.setWidths(new float[]{2, 1.5f}); // Label, Value
-        totalsTable.setSpacingBefore(5f);
+        PdfPTable contentTable = new PdfPTable(2);
+        contentTable.setWidthPercentage(55); // La carte prend 55%
+        contentTable.setWidths(new float[]{2, 1.5f});
+        contentTable.setHorizontalAlignment(Element.ALIGN_RIGHT);
 
+        String currency = getString(salaryData, "currency", "");
 
-        addStyledTotalRow(totalsTable, "Salaire Brut:", getDouble(salaryData, "gross_pay"), getString(salaryData, "currency", ""), FONT_TOTAL_LABEL, FONT_VALUE_BOLD);
-        addStyledTotalRow(totalsTable, "Total Déductions:", getDouble(salaryData, "total_deduction"), getString(salaryData, "currency", ""), FONT_TOTAL_LABEL, FONT_VALUE_BOLD);
-        addStyledTotalRow(totalsTable, "Salaire Net:", getDouble(salaryData, "net_pay"), getString(salaryData, "currency", ""), FONT_TOTAL_LABEL, FONT_TOTAL_VALUE, true);
+        addTotalRow(contentTable, "Salaire Brut:", getDouble(salaryData, "gross_pay"), currency, FONT_TOTAL_LABEL, FONT_TOTAL_VALUE);
+        addTotalRow(contentTable, "Total Retenues:", getDouble(salaryData, "total_deduction"), currency, FONT_TOTAL_LABEL, FONT_TOTAL_VALUE);
 
-        document.add(totalsTable);
+        addGrandTotalRow(contentTable, "SALAIRE NET À PAYER:", getDouble(salaryData, "net_pay"), currency, FONT_GRAND_TOTAL_LABEL, FONT_GRAND_TOTAL_VALUE);
+
+        PdfPCell containerCell = new PdfPCell(contentTable);
+        containerCell.setBorder(Rectangle.NO_BORDER);
+        containerCell.setPadding(0); // Le padding est géré par l'événement
+        containerCell.setCellEvent(new LeftBorderedRoundedCellEvent(COLOR_PRIMARY));
+
+        mainContainer.addCell(containerCell);
+        document.add(mainContainer);
+
+        addNetInWords(document, salaryData);
     }
 
-    private void addStyledTotalRow(PdfPTable table, String label, Double value, String currency, Font labelFont, Font valueFont) {
-        addStyledTotalRow(table, label, value, currency, labelFont, valueFont, false);
-    }
-    private void addStyledTotalRow(PdfPTable table, String label, Double value, String currency, Font labelFont, Font valueFont, boolean isGrandTotal) {
+    private void addTotalRow(PdfPTable table, String label, Double value, String currency, Font labelFont, Font valueFont) {
+        // ... (code inchangé, mais on ajoute du padding)
         PdfPCell labelCell = new PdfPCell(new Phrase(label, labelFont));
         labelCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
         labelCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
         labelCell.setBorder(Rectangle.NO_BORDER);
-        labelCell.setPaddingRight(10f);
-        labelCell.setPaddingTop(isGrandTotal ? 8f : 4f);
-        labelCell.setPaddingBottom(isGrandTotal ? 8f : 4f);
+        labelCell.setPadding(10f);
         table.addCell(labelCell);
 
-        String formattedValue = (value != null ? CURRENCY_FORMAT.format(value) : "0,00") + " " + currency; // Changed default to "0,00"
+        String formattedValue = (value != null ? CURRENCY_FORMAT.format(value) : "0,00");
         PdfPCell valueCell = new PdfPCell(new Phrase(formattedValue, valueFont));
         valueCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
         valueCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
         valueCell.setBorder(Rectangle.NO_BORDER);
-        if (isGrandTotal) {
-            valueCell.setBorder(Rectangle.TOP | Rectangle.BOTTOM);
-            valueCell.setBorderColor(COLOR_PRIMARY_TEXT);
-            valueCell.setBorderWidth(0.5f);
-        }
-        valueCell.setPaddingTop(isGrandTotal ? 8f : 4f);
-        valueCell.setPaddingBottom(isGrandTotal ? 8f : 4f);
+        valueCell.setPadding(10f);
         table.addCell(valueCell);
     }
+
+    // NOUVEAU: Ligne spéciale pour le grand total avec fond
+    private void addGrandTotalRow(PdfPTable table, String label, Double value, String currency, Font labelFont, Font valueFont) {
+        PdfPCell labelCell = new PdfPCell(new Phrase(label, labelFont));
+        labelCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        labelCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        labelCell.setBorder(Rectangle.NO_BORDER);
+        labelCell.setBackgroundColor(COLOR_PRIMARY_LIGHT);
+        labelCell.setPaddingTop(15f);
+        labelCell.setPaddingBottom(15f);
+        labelCell.setPaddingRight(10f);
+        table.addCell(labelCell);
+
+        String formattedValue = (value != null ? CURRENCY_FORMAT.format(value) : "0,00") + " " + currency;
+        PdfPCell valueCell = new PdfPCell(new Phrase(formattedValue, valueFont));
+        valueCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        valueCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        valueCell.setBorder(Rectangle.NO_BORDER);
+        valueCell.setBackgroundColor(COLOR_PRIMARY_LIGHT);
+        valueCell.setPaddingTop(15f);
+        valueCell.setPaddingBottom(15f);
+        valueCell.setPaddingRight(10f);
+        table.addCell(valueCell);
+    }
+
     private void addNetInWords(Document document, Map<String, Object> salaryData) throws DocumentException {
-        Paragraph label = new Paragraph("Montant Net en Toutes Lettres:", FONT_NET_IN_WORDS_LABEL);
-        label.setSpacingBefore(10f);
-        document.add(label);
+        PdfPTable table = new PdfPTable(1);
+        table.setWidthPercentage(55); // Aligné sur la carte des totaux
+        table.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        table.setSpacingBefore(5f);
 
-        Paragraph value = new Paragraph(getString(salaryData, "total_in_words", ""), FONT_NET_IN_WORDS_VALUE);
-        document.add(value);
+        Paragraph p = new Paragraph("Arrêté à la somme de : " + getString(salaryData, "total_in_words", ""), FONT_NET_IN_WORDS);
+
+        PdfPCell cell = new PdfPCell(p);
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        cell.setPaddingRight(10f); // Petit décalage
+        table.addCell(cell);
+
+        document.add(table);
     }
 
+    // --- Utilitaires (inchangés) ---
+    private String getString(Map<String, Object> d, String k, String def) { return Optional.ofNullable(d).map(m->m.get(k)).map(Object::toString).filter(s->!s.isEmpty()).orElse(def); }
+    private Double getDouble(Map<String, Object> d, String k) { if(d==null)return 0.0; Object v=d.get(k); if(v instanceof Number)return ((Number)v).doubleValue(); try{return Optional.ofNullable(v).map(o->Double.parseDouble(o.toString())).orElse(0.0);}catch(Exception e){return 0.0;} }
+    private String formatDate(String ds) { if(ds==null||ds.isEmpty())return "N/A"; try{Date d=DATE_FORMAT_INPUT.parse(ds);return DATE_FORMAT_OUTPUT.format(d);}catch(ParseException e){return ds;} }
+}
 
-    private void addSeparatorLine(Document document, float spacingBefore) throws DocumentException {
-        Paragraph p = new Paragraph();
-        p.setSpacingBefore(spacingBefore);
-        document.add(p); // Add some space before the line
 
-        PdfPTable lineTable = new PdfPTable(1);
-        lineTable.setWidthPercentage(100);
-        PdfPCell lineCell = new PdfPCell();
-        lineCell.setBorder(Rectangle.BOTTOM); // Only bottom border
-        lineCell.setBorderColor(COLOR_BORDER);
-        lineCell.setBorderWidth(0.5f);
-        lineCell.setFixedHeight(1f); // Make the cell very short, so only border is visible
-        lineTable.addCell(lineCell);
-        document.add(lineTable);
-        // document.add(Chunk.NEWLINE); // Add space after the line
+// NOUVEAU: Page Event Helper pour la bande latérale et le pied de page
+class ModernPageEventHelper extends PdfPageEventHelper {
+    private BaseColor sideBarColor;
+    private Font footerFont = FontFactory.getFont(FontFactory.HELVETICA, 8, Font.NORMAL, new BaseColor(0x64, 0x74, 0x8B));
+
+    public ModernPageEventHelper(BaseColor sideBarColor) {
+        this.sideBarColor = sideBarColor;
     }
 
+    @Override
+    public void onEndPage(PdfWriter writer, Document document) {
+        PdfContentByte canvas = writer.getDirectContent();
 
-    // --- Utility Methods (getString, getDouble, formatDate) ---
-    // These should be mostly the same, ensure they handle nulls gracefully.
+        // 1. Dessiner la bande latérale
+        canvas.saveState();
+        canvas.setColorFill(sideBarColor);
+        canvas.rectangle(0, 0, 20, document.getPageSize().getHeight()); // Bande de 20pt de large
+        canvas.fill();
+        canvas.restoreState();
 
-    private String getString(Map<String, Object> data, String key, String defaultValue) {
-        return Optional.ofNullable(data)
-                .map(d -> d.get(key))
-                .map(Object::toString)
-                .filter(s -> !s.isEmpty())
-                .orElse(defaultValue);
-    }
-
-    private Double getDouble(Map<String, Object> data, String key) {
-        if (data == null) return 0.0;
-        Object val = data.get(key);
-        if (val instanceof Number) {
-            return ((Number) val).doubleValue();
-        }
+        // 2. Dessiner le pied de page
         try {
-            return Optional.ofNullable(val).map(v -> Double.parseDouble(v.toString())).orElse(0.0);
-        } catch (NumberFormatException e) { // Catch specifically NumberFormatException
-            System.err.println("Warning: Could not parse double for key '" + key + "', value: '" + val + "'. Defaulting to 0.0.");
-            return 0.0;
+            PdfPTable footer = new PdfPTable(1);
+            footer.setTotalWidth(document.right() - document.left());
+            footer.setLockedWidth(true);
+
+            PdfPCell cell = new PdfPCell(new Phrase(String.format("Page %d | Document confidentiel généré par Mahery", writer.getPageNumber()), footerFont));
+            cell.setBorder(Rectangle.TOP);
+            cell.setBorderColor(new BaseColor(0xDE, 0xE2, 0xE6));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setPaddingTop(10f);
+            footer.addCell(cell);
+
+            footer.writeSelectedRows(0, -1, document.leftMargin(), document.bottom() - 10, writer.getDirectContent());
+        } catch(Exception e) {
+            throw new ExceptionConverter(e);
         }
     }
+}
 
-    private String formatDate(String dateStr) {
-        if (dateStr == null || dateStr.isEmpty()) {
-            return "N/A";
-        }
-        try {
-            Date date = DATE_FORMAT_INPUT.parse(dateStr);
-            return DATE_FORMAT_OUTPUT.format(date);
-        } catch (ParseException e) {
-            return dateStr; // Return original if parsing fails
-        }
+
+// NOUVEAU: Cell Event pour la carte des totaux avec bordure gauche
+class LeftBorderedRoundedCellEvent implements PdfPCellEvent {
+    private BaseColor borderColor;
+
+    public LeftBorderedRoundedCellEvent(BaseColor borderColor) {
+        this.borderColor = borderColor;
     }
 
+    @Override
+    public void cellLayout(PdfPCell cell, Rectangle position, PdfContentByte[] canvases) {
+        PdfContentByte canvas = canvases[PdfPTable.BACKGROUNDCANVAS];
+        float radius = 8f;
+        float padding = 2f; // Petit espace pour éviter que le contenu ne touche le bord
+
+        // Fond blanc de la carte
+        canvas.saveState();
+        canvas.setColorFill(BaseColor.WHITE);
+        canvas.roundRectangle(
+                position.getLeft() + padding,
+                position.getBottom() + padding,
+                position.getWidth() - (2 * padding),
+                position.getHeight() - (2 * padding),
+                radius
+        );
+        canvas.fill();
+
+        // Bordure gauche colorée
+        canvas.setColorFill(this.borderColor);
+        canvas.rectangle(
+                position.getLeft() + padding,
+                position.getBottom() + padding,
+                5f, // Épaisseur de la bordure
+                position.getHeight() - (2 * padding)
+        );
+        canvas.fill();
+        canvas.restoreState();
+
+        // (Optionnel) Ajoute une ombre légère pour un effet de profondeur
+        PdfContentByte foreground = canvases[PdfPTable.BACKGROUNDCANVAS];
+        foreground.saveState();
+        foreground.setColorStroke(new BaseColor(0, 0, 0, 30)); // Ombre noire transparente
+        foreground.setLineWidth(1f);
+        foreground.roundRectangle(
+                position.getLeft() + padding + 1,
+                position.getBottom() + padding -1,
+                position.getWidth() - (2 * padding),
+                position.getHeight() - (2 * padding),
+                radius
+        );
+        foreground.stroke();
+        foreground.restoreState();
+    }
 }

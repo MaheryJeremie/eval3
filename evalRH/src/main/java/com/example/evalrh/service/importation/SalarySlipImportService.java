@@ -21,6 +21,7 @@ import java.util.Map;
 public class SalarySlipImportService {
     public List<Map<String, Object>> prepareSalarySlip(MultipartFile file)throws Exception{
         List<Map<String, Object>> salaryStructures = new ArrayList<>();
+        //try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8));
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8));
              CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT
                      .withDelimiter(',')
