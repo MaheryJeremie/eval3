@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,7 +22,8 @@ public class EmployeeImportService {
 
     public List<Map<String, Object>> prepareEmployee(MultipartFile file)throws Exception{
         List<Map<String, Object>> employees = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8));
+        //try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8));
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), Charset.forName("windows-1252")));
              CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT
                      .withDelimiter(',')
                      .withFirstRecordAsHeader()

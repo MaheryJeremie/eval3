@@ -37,19 +37,45 @@ public class ImportController {
 
     @PostMapping
     public String uploadEmployeesCsv(@RequestParam("file1") MultipartFile file1,@RequestParam("file2") MultipartFile file2,@RequestParam("file3") MultipartFile file3, Model model) {
-        if (file1.isEmpty() || file2.isEmpty() ) {
+        if (file1.isEmpty() || file2.isEmpty() || file3.isEmpty()) {
             model.addAttribute("message", "Veuillez sélectionner des fichier CSV.");
+            model.addAttribute("messageType","error");
             return "import/form";
         }
         try {
-            List<Map<String, Object>> employees= employeeImportService.prepareEmployee(file1);
-            List<Map<String, Object>> salaryStructures= salaryStructureImportService.prepareSalaryStructure(file2);
-            List<Map<String, Object>> salarySlips= salarySlipImportService.prepareSalarySlip(file3);
-            model.addAttribute("message", importService.importData(employees,salaryStructures,salarySlips).getBody());
-            model.addAttribute("messageType", "success");
+            List<Map<String, Object>> employees = employeeImportService.prepareEmployee(file1);
+            List<Map<String, Object>> salaryStructures = salaryStructureImportService.prepareSalaryStructure(file2);
+            List<Map<String, Object>> salarySlips = salarySlipImportService.prepareSalarySlip(file3);
+
+            String fullMessage = importService.importData(employees, salaryStructures, salarySlips)
+                    .getBody()
+                    .get("message")
+                    .toString();
+
+            boolean success = fullMessage.contains("success=true");
+            String displayMessage;
+
+            if (success) {
+                // Cas de succès
+                displayMessage = fullMessage.substring(fullMessage.indexOf("message=") + 8,
+                                fullMessage.lastIndexOf("}"))
+                        .trim();
+                model.addAttribute("messageType", "success");
+            } else {
+                // Cas d'erreur - on extrait seulement la partie error=
+                int errorStart = fullMessage.indexOf("error=") + 6;
+                int errorEnd = fullMessage.indexOf(", traceback=");
+                if (errorEnd == -1) errorEnd = fullMessage.length();
+
+                displayMessage = fullMessage.substring(errorStart, errorEnd).trim();
+                model.addAttribute("messageType", "error");
+            }
+
+            model.addAttribute("message", displayMessage);
             return "import/form";
+
         } catch (Exception e) {
-            model.addAttribute("message", "Erreur lors de l'importation: " + e.getMessage());
+            model.addAttribute("message", e.getMessage());
             model.addAttribute("messageType", "error");
             return "import/form";
         }

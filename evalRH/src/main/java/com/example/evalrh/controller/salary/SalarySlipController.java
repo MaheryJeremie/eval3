@@ -39,15 +39,16 @@ public class SalarySlipController {
     }
     @GetMapping()
     public String allSalarySlip(Model model) {
-        model.addAttribute("salaries", salarySlipService.getAllSalarySlip());
+        List<Map<String, Object>> allSalaries= salarySlipService.getSalarySlipByMonth("");
+        model.addAttribute("salaries", allSalaries);
         return "salary/allSalarySlip";
     }
     @GetMapping("/search")
-    public String salarySlipSearch(Model model, @RequestParam String month,@RequestParam String page) {
+    public String salarySlipSearch(Model model, @RequestParam String month) {
         List<Map<String, Object>> salaries=salarySlipService.getSalarySlipByMonth(month);
         model.addAttribute("salaries", salaries);
-        model.addAttribute("employee",salaries.get(0).get("employee"));
-        return "salary/"+page;
+        model.addAttribute("month",month);
+        return "salary/allSalarySlip";
     }
     @GetMapping("/exportPdf")
     public void exportPdf(

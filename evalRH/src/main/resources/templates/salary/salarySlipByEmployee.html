@@ -102,6 +102,7 @@
         .table-responsive {
             overflow-x: auto; /* Enable horizontal scrolling for small screens */
             -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+            max-height: 600px;overflow-y: auto
         }
 
         .data-table {
@@ -211,7 +212,7 @@
             }
 
             .action-link {
-                padding: var(--space-0) var(--space-1);
+                padding: var(--space-1) var(--space-1);
                 font-size: var(--text-xs);
             }
 
@@ -233,16 +234,17 @@
     <div class="content-container">
         <div class="page-header">
             <h2>Salaires de l'employee <span th:text="${employee}"></span></h2>
-            <form th:action="@{/salarySlip/search}" method="get" class="search-form">
-                <input type="hidden" value="salarySlipByEmployee" name="page">
-                <div>
-                    <label for="month">Mois:</label>
-                    <input type="month" name="month" id="month">
-                </div>
-                <button type="submit" class="search-btn">
-                    <i data-lucide="search"></i> Filtrer
-                </button>
-            </form>
+<!--            <form th:action="@{/salarySlip/search}" method="get" class="search-form">-->
+<!--                <input type="hidden" th:value="${employee}" name="employee">-->
+<!--                <input type="hidden" value="salarySlipByEmployee" name="page">-->
+<!--                <div>-->
+<!--                    <label for="month">Mois:</label>-->
+<!--                    <input type="month" name="month" id="month">-->
+<!--                </div>-->
+<!--                <button type="submit" class="search-&lt;!&ndash;&ndash;&gt;btn">-->
+<!--                    <i data-lucide="search"></i> Filtrer-->
+<!--                </button>-->
+<!--            </form>-->
         </div>
 
         <div class="card">
@@ -256,6 +258,7 @@
                         <th>Nom du bulletin</th>
                         <th>Nom de l'employé</th>
                         <th>Salaire brute</th>
+                        <th>Total retenues</th>
                         <th>Net a payer</th>
                         <th>Action</th>
                     </tr>
@@ -268,6 +271,7 @@
                         <td th:text="${salary.name}"></td>
                         <td th:text="${salary.employee_name}"></td>
                         <td th:text="${#numbers.formatDecimal(salary.gross_pay, 0, 'WHITESPACE', 2, 'COMMA')} + ' ' + ${salary.currency}"></td>
+                        <td th:text="${#numbers.formatDecimal(salary.total_deduction, 0, 'WHITESPACE', 2, 'COMMA')} + ' ' + ${salary.currency}"></td>
                         <td th:text="${#numbers.formatDecimal(salary.net_pay, 0, 'WHITESPACE', 2, 'COMMA')} + ' ' + ${salary.currency}"></td>
                         <td class="actions-cell">
                             <a th:href="@{/salarySlip/exportPdf(name=${salary.name})}" class="action-link">
