@@ -66,11 +66,9 @@ public class SalarySlipPdfExporter {
     public void exportToPdf(Map<String, Object> salaryData, OutputStream outputStream) throws DocumentException, IOException {
         Map<String, Object> companyDetails = companyService.getCompanyDetails(getString(salaryData, "company", ""));
 
-        // MODIFIÉ: Augmentation de la marge gauche pour la bande de couleur
         Document document = new Document(PageSize.A4, 48, 36, 36, 36);
         PdfWriter writer = PdfWriter.getInstance(document, outputStream);
 
-        // NOUVEAU: Événement pour la bande latérale et le pied de page
         ModernPageEventHelper eventHelper = new ModernPageEventHelper(COLOR_PRIMARY);
         writer.setPageEvent(eventHelper);
 
@@ -94,7 +92,6 @@ public class SalarySlipPdfExporter {
         document.close();
     }
 
-    // MODIFIÉ: En-tête sans logo, avec une forte hiérarchie typographique
     private void addHeaderSection(Document document, Map<String, Object> companyDetails, Map<String, Object> salaryData) throws DocumentException {
         PdfPTable headerTable = new PdfPTable(2);
         headerTable.setWidthPercentage(100);
@@ -129,7 +126,6 @@ public class SalarySlipPdfExporter {
         document.add(headerTable);
     }
 
-    // MODIFIÉ: Utilisation des nouveaux styles de police pour les labels
     private void addEmployeeAndPeriodInfo(Document document, Map<String, Object> salaryData) throws DocumentException {
         PdfPTable infoTable = new PdfPTable(2);
         infoTable.setWidthPercentage(100);
@@ -171,7 +167,6 @@ public class SalarySlipPdfExporter {
         return p;
     }
 
-    // NOUVEAU: Table de style moderne (ligne de séparation au lieu de fond)
     private PdfPTable createModernStyledTable(List<Map<String, Object>> items, String currency) throws DocumentException {
         PdfPTable table = new PdfPTable(2);
         table.setWidthPercentage(100);
