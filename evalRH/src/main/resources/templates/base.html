@@ -358,7 +358,7 @@
             <li>
                 <a th:href="@{/employees}" class="nav-item">
                     <i data-lucide="book-user"></i>
-                    <span>Employees</span>
+                    <span>Employées</span>
                 </a>
             </li>
             <li>
@@ -374,9 +374,27 @@
                 </a>
             </li>
             <li>
+                <a th:href="@{/generate}" class="nav-item">
+                    <i data-lucide="shuffle"></i>
+                    <span>Génération salaires</span>
+                </a>
+            </li>
+            <li>
+                <a th:href="@{/update}" class="nav-item">
+                    <i data-lucide="pencil"></i>
+                    <span>Modification salaire</span>
+                </a>
+            </li>
+            <li>
                 <a th:href="@{/import}" class="nav-item">
                     <i data-lucide="upload"></i>
-                    <span>Import de donnees</span>
+                    <span>Import de données</span>
+                </a>
+            </li>
+            <li>
+                <a th:href="@{/reset}" class="nav-item">
+                    <i data-lucide="database-backup"></i>
+                    <span>Reset de données</span>
                 </a>
             </li>
         </ul>

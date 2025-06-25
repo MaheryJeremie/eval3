@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class EmployeeService {
@@ -60,5 +61,14 @@ public class EmployeeService {
         ResponseEntity<Map> responseEntity = frappeService.get(EMPLOYEE_SEARCH_ENDPOINT, params);
 
         return (List<Map<String, Object>>) responseEntity.getBody().get("message");
+    }
+    public Optional<Map<String, Object>> getEmployeeDetails(String employeeId) {
+        try {
+            ResponseEntity<Map> response = frappeService.get(EMPLOYEE_ENDPOINT + "/" + employeeId, null);
+            Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
+            return Optional.ofNullable(data);
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 }

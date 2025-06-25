@@ -133,7 +133,7 @@
                             </td>
                             <td th:text="${salary.name}"></td>
                             <td th:text="${salary.employee_name}"></td>
-                            <td th:text="${salary.start_date} + ' - ' + ${salary.end_date}"></td>
+                            <td th:text="${salary.start_date} + ' au ' + ${salary.end_date}"></td>
                             <td th:text="${#numbers.formatDecimal(salary.gross_pay, 0, 'WHITESPACE', 2, 'COMMA')} + ' ' + ${salary.currency}"></td>
                             <td th:text="${#numbers.formatDecimal(salary.total_deduction, 0, 'WHITESPACE', 2, 'COMMA')} + ' ' + ${salary.currency}"></td>
                             <td style="font-weight: 600;" th:text="${#numbers.formatDecimal(salary.net_pay, 0, 'WHITESPACE', 2, 'COMMA')} + ' ' + ${salary.currency}"></td>

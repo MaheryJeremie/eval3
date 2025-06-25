@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{/base}">
+<head>
+    <title>Génération des salaires - ERP System</title>
+    <style>
+        /* Specific styles for the Employees list page, adapted for Salary Modification */
+        .page-header {
+            margin-bottom: var(--space-4);
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--neutral-200);
+        }
+
+        .page-header h2 {
+            font-size: var(--text-2xl);
+            color: var(--neutral-800);
+            font-weight: 600;
+            margin-bottom: 0; /* Override default h2 margin for card integration */
+        }
+
+        .card {
+            background-color: white;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            padding: var(--space-4);
+            margin-bottom: var(--space-4);
+            border: 1px solid var(--neutral-200);
+            /* --- Styles for card size reduction --- */
+            max-width: 500px; /* Adjust this value to make the card narrower */
+            margin-left: auto;
+            margin-right: auto;
+            /* --- End card size styles --- */
+        }
+
+        .alert {
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-3);
+            font-size: var(--text-sm);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .alert-success {
+            background-color: #d1fae5; /* Primary-50 for success background */
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .alert-danger {
+            background-color: #fee2e2; /* Similar to primary-50 for error background */
+            color: var(--error);
+            border: 1px solid var(--error);
+        }
+
+        .alert svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .search-form {
+            display: flex;
+            flex-direction: column; /* Stack items vertically */
+            gap: var(--space-3); /* Increased gap for more vertical space */
+            /* The form will now adapt to the card's max-width */
+        }
+
+        .search-form label {
+            font-weight: 500;
+            color: var(--neutral-700);
+            font-size: var(--text-sm);
+            display: block; /* Ensure label takes full width */
+            margin-bottom: var(--space-1); /* Space between label and input */
+        }
+
+        /* Base style for all inputs and selects */
+        .search-form input[type="text"],
+        .search-form input[type="month"],
+        .search-form input[type="number"],
+        .search-form select {
+            width: 100%;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--neutral-300);
+            border-radius: var(--radius-md);
+            font-size: var(--text-base);
+            color: var(--neutral-700);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            background-color: white;
+        }
+
+        /* Focus styles for all inputs and selects */
+        .search-form input[type="text"]:focus,
+        .search-form input[type="month"]:focus,
+        .search-form input[type="number"]:focus,
+        .search-form select:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Specific style for SELECT elements only for the custom arrow */
+        .search-form select {
+            appearance: none; /* Remove default select arrow */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right var(--space-2) center;
+            background-size: 18px;
+            padding-right: var(--space-5); /* Make space for custom arrow */
+        }
+
+
+        .search-btn {
+            background-color: var(--primary-600);
+            color: white;
+            border: none;
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: var(--text-base);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-1);
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+            height: auto; /* Remove fixed height */
+            align-self: flex-start; /* Align button to the start */
+        }
+
+        .search-btn:hover {
+            background-color: var(--primary-700);
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+
+        .search-btn svg {
+            width: 20px;
+            height: 20px;
+            margin-right: var(--space-1);
+        }
+
+        /* Responsive adjustments for forms and tables */
+        @media (max-width: 768px) {
+            /* Adjust card for small screens */
+            .card {
+                max-width: 95%; /* Make card nearly full width on very small screens */
+                padding: var(--space-3); /* Adjust card padding */
+            }
+
+            .search-form {
+                gap: var(--space-2); /* Reduced gap for smaller screens */
+            }
+
+            .search-form label {
+                font-size: var(--text-xs);
+                margin-bottom: var(--space-0);
+            }
+
+            .search-form input[type="text"],
+            .search-form input[type="month"],
+            .search-form input[type="number"],
+            .search-form select {
+                padding: var(--space-1) var(--space-2);
+                font-size: var(--text-sm);
+            }
+
+            .search-btn {
+                padding: var(--space-1) var(--space-3);
+                font-size: var(--text-sm);
+                width: 100%; /* Full width button */
+            }
+
+            .alert {
+                padding: var(--space-2);
+                font-size: var(--text-sm);
+            }
+
+            .alert svg {
+                width: 16px;
+                height: 16px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .page-header h2 {
+                font-size: var(--text-xl);
+            }
+        }
+    </style>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="content-container">
+        <div class="page-header">
+            <h2>Modification de Salaire</h2>
+        </div>
+
+        <div class="card">
+            <div th:if="${message}" th:classappend="${messageType == 'success' ? 'alert-success' : 'alert-danger'}" class="alert" role="alert">
+                <i th:if="${messageType == 'success'}" data-lucide="check-circle"></i>
+                <i th:if="${messageType == 'danger'}" data-lucide="x-circle"></i>
+                <span th:text="${message}"></span>
+            </div>
+            <div th:if="${error}" th:classappend="${messageType == 'danger' ? 'alert-danger' : ''}" class="alert" role="alert">
+                <i data-lucide="x-circle"></i>
+                <span th:text="${error}"></span>
+            </div>
+
+            <form th:action="@{/update}" method="post" class="search-form">
+                <div>
+                    <label for="component">Composant de salaire:</label>
+                    <select name="component" id="component">
+                        <option value="" hidden>-- Choisir --</option>
+                        <option th:each="component : ${components}"
+                                th:value="${component.name}"
+                                th:text="${component.name}"></option>
+                    </select>
+                </div>
+                <div>
+                    <label for="condition">Condition :</label>
+                    <select id="condition" name="condition" required>
+                        <option value="<">Inférieur</option>
+                        <option value=">">Supérieur</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="salaire">Montant :</label>
+                    <input type="number" id="salaire"  name="salaire" />
+                </div>
+                <div>
+                    <label for="pourcentage">Pourcentage :</label>
+                    <input type="number" id="pourcentage"  name="pourcentage" step="0.01" required/>
+                </div>
+                <button type="submit" class="search-btn">
+                    <i data-lucide="pencil"></i> Modifier
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialiser les icônes Lucide
+    document.addEventListener('DOMContentLoaded', function() {
+        lucide.createIcons();
+    });
+</script>
+</body>
+</html>
